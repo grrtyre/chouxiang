@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>抽象话生成器 · chouxiang</title>
+<style>
+  :root {
+    --bg: #f6f5f1;
+    --card: #ffffff;
+    --ink: #232020;
+    --muted: #8a8480;
+    --line: #e7e3dd;
+    --accent: #ff5a3c;
+    --accent2: #2b2b2b;
+    --ok: #2e9e5b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.7;
+    padding: 24px 16px 60px;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 22px; }
+  h1 { font-size: 28px; margin: 0 0 6px; letter-spacing: 1px; }
+  .sub { color: var(--muted); font-size: 14px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 0 rgba(0,0,0,.02);
+  }
+  label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 8px; }
+  textarea {
+    width: 100%;
+    min-height: 110px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 16px;
+    resize: vertical;
+    font-family: inherit;
+    background: #fcfbf9;
+    color: var(--ink);
+  }
+  textarea:focus { outline: none; border-color: var(--accent); }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 14px; }
+  button {
+    border: none;
+    border-radius: 999px;
+    padding: 10px 18px;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: transform .06s ease, opacity .2s;
+  }
+  button:active { transform: scale(.96); }
+  .btn-main { background: var(--accent); color: #fff; }
+  .btn-ghost { background: #efece7; color: var(--ink); }
+  .btn-line { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  .switch { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); cursor: pointer; user-select: none; }
+  .switch input { width: 16px; height: 16px; accent-color: var(--accent); }
+  .out {
+    margin-top: 6px;
+    min-height: 80px;
+    border: 1px dashed var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 17px;
+    background: #fcfbf9;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 10px; }
+  .tag { display:inline-block; background:#f0e9e6; color:#6b655f; border-radius:6px; padding:1px 7px; font-size:12px; margin:2px 4px 2px 0;}
+  footer { text-align:center; color:var(--muted); font-size:12px; margin-top:28px;}
+  a { color: var(--accent); }
+  .copied { color: var(--ok); font-size: 13px; margin-left: 8px; opacity: 0; transition: opacity .2s; }
+  .copied.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🤡 抽象话生成器</h1>
+    <div class="sub">把大白话变成圈内人才懂的「抽象话」· 来自 <a href="https://github.com/grrtyre/chouxiang" target="_blank" rel="noreferrer">chouxiang</a></div>
+  </header>
+
+  <div class="card">
+    <label for="input">输入你想「抽象」的话</label>
+    <textarea id="input" placeholder="例如：这操作真是太典型了，笑死我了，真不错啊……"></textarea>
+    <div class="row">
+      <button class="btn-main" id="gen">生成抽象话</button>
+      <button class="btn-ghost" id="clear">清空</button>
+      <button class="btn-line" id="copy">复制结果<span class="copied" id="copied">已复制 ✓</span></button>
+      <label class="switch"><input type="checkbox" id="emojiMode" /> emoji 填充模式（每个字后塞表情）</label>
+    </div>
+    <div class="hint">
+      替换规则包含：谐音（绷不住→蚌埠住、真不错→针不戳）、拼音缩写（笑死我了→xswl）、单字浓缩（典型→典）等。
+    </div>
+  </div>
+
+  <div class="card">
+    <label>输出（抽象话）</label>
+    <div class="out" id="output">结果会显示在这里……</div>
+    <div class="hint">提示：emoji 填充模式下结果会比较「重量级」，谨慎发朋友圈 🐶</div>
+  </div>
+
+  <footer>
+    用爱发电支持本项目 → <a href="https://www.ifdian.net/a/giquwei" target="_blank" rel="noreferrer">爱发电 giquwei</a><br/>
+    MIT © 2026 grrtyre
+  </footer>
+</div>
+
+<script>
+  // 谐音 / 缩写 / 单字浓缩 替换表（按长度从长到短匹配，避免短词误伤）
+  const REPLACERS = [
+    { from: "笑死我了", to: "xswl" },
+    { from: "永远的神", to: "yyds" },
+    { from: "阴阳怪气", to: "yygq" },
+    { from: "有一说一", to: "u1s1" },
+    { from: "你说得对", to: "nsdd" },
+    { from: "虽然但是", to: "srds" },
+    { from: "不懂就问", to: "bdjw" },
+    { from: "瑟瑟发抖", to: "ssfd" },
+    { from: "漂亮姐姐", to: "pljj" },
+    { from: "不好意思", to: "bhys" },
+    { from: "朋友圈", to: "pyq" },
+    { from: "小红书", to: "xhs" },
+    { from: "兄弟姐妹", to: "xdjm" },
+    { from: "玻璃心", to: "blx" },
+    { from: "啊我死了", to: "awsl" },
+    { from: "真不错", to: "针不戳" },
+    { from: "绷不住", to: "蚌埠住" },
+    { from: "多损", to: "夺笋" },
+    { from: "姐妹", to: "集美" },
+    { from: "真的假的", to: "尊嘟假嘟" },
+    { from: "典型", to: "典" },
+    { from: "乐子人", to: "乐子人" },
+    { from: "早安打工人", to: "早安打工人" },
+    { from: "打工人", to: "打工人" },
+  ];
+
+  const EMOJIS = ["🤡","💀","👁️","🔥","🐶","🐭","🧠","💩","🌿","✨","😅","🤣","🐟","🍚","🥴","👻","🦑","🌚","💢","🐸"];
+
+  function rand(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+  function replaceWords(text){
+    // 按 from 长度降序，避免「笑死我了」被「笑」之类短词提前拆
+    const sorted = [...REPLACERS].sort((a,b)=> b.from.length - a.from.length);
+    let out = text;
+    for (const r of sorted){
+      // 全局替换，转义正则特殊字符
+      const esc = r.from.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      out = out.replace(new RegExp(esc, "g"), r.to);
+    }
+    return out;
+  }
+
+  function emojiFill(text){
+    let out = "";
+    for (const ch of text){
+      out += ch;
+      // 中文字符、标点之后都塞 emoji；空白跳过
+      if (/\S/.test(ch)) out += rand(EMOJIS);
+    }
+    return out;
+  }
+
+  function generate(){
+    const input = document.getElementById("input").value;
+    if (!input.trim()){ document.getElementById("output").textContent = "先说点什么嘛 🐶"; return; }
+    const emojiMode = document.getElementById("emojiMode").checked;
+    let res = replaceWords(input);
+    if (emojiMode) res = emojiFill(res);
+    document.getElementById("output").textContent = res;
+  }
+
+  function copy(){
+    const txt = document.getElementById("output").textContent;
+    if (!txt || txt === "结果会显示在这里……") return;
+    navigator.clipboard.writeText(txt).then(()=>{
+      const c = document.getElementById("copied");
+      c.classList.add("show");
+      setTimeout(()=> c.classList.remove("show"), 1200);
+    }).catch(()=>{ alert("复制失败，请手动选择文本复制～"); });
+  }
+
+  document.getElementById("gen").addEventListener("click", generate);
+  document.getElementById("copy").addEventListener("click", copy);
+  document.getElementById("clear").addEventListener("click", ()=>{
+    document.getElementById("input").value = "";
+    document.getElementById("output").textContent = "结果会显示在这里……";
+    document.getElementById("input").focus();
+  });
+  // 输入时实时生成（非 emoji 模式）
+  document.getElementById("input").addEventListener("input", ()=>{
+    if (!document.getElementById("emojiMode").checked) generate();
+  });
+  document.getElementById("emojiMode").addEventListener("change", generate);
+</script>
+</body>
+</html>
